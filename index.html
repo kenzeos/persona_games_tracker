@@ -196,6 +196,13 @@
   .fsimple div{padding:2px 0}
   .fsimple small{color:var(--mut)}
   .nbox.arc{border-color:#7a5a1a;background:#221a08;color:#ffe2a6}
+
+  .dayfoot{position:sticky;bottom:0;z-index:3;display:flex;gap:8px;padding:8px 10px;background:linear-gradient(to top,var(--card) 70%,transparent);border-top:1px solid var(--line)}
+  .dayfoot button{flex:1;padding:10px 8px;border-radius:8px;border:1px solid var(--line);background:#222;color:var(--txt);font-weight:700;font-size:13.5px;cursor:pointer}
+  .dayfoot .next{background:var(--red);border-color:var(--red);color:#fff}
+  .day.justdone>summary{background:rgba(127,224,160,.18);transition:background .3s}
+
+  details.day[open]{overflow:visible}
 </style></head><body data-g="p5r">
 <header><div class="top"><h1 id="title">Persona</h1><button id="gear" aria-label="Settings">⚙</button></div>
 <div id="games"><button data-g="p5r">P5 Royal</button><button data-g="p3r">P3 Reload</button></div><div id="variant"></div>
@@ -412,11 +419,17 @@ function buildDay(dd){
       const lt=(x.fu&&G.id==="p3rf"&&FZ==="simple")?`Do these ${x.fu.length} fusion${x.fu.length>1?"s":""} in the Velvet Room`:x.t;
       row.innerHTML=`<input type="checkbox" ${state[k]?"checked":""}><span class="lbl">${x.arc?"🃏 ":""}${fmt(lt)}${x.s?x.s.map(tipHTML).join(""):""}</span>`;
       if(x.w)row.querySelector(".lbl").insertAdjacentHTML("afterbegin",'<span class="pin">📍</span>');
-      row.querySelector("input").onchange=e=>{state[k]=e.target.checked?1:0;save();row.classList.toggle("done",!!state[k]);setSum();updatePct();calcPos()};
+      row.querySelector("input").onchange=e=>{const[b0,n0]=dayDone(dd);state[k]=e.target.checked?1:0;save();row.classList.toggle("done",!!state[k]);setSum();updatePct();calcPos();
+        const[b1,n1]=dayDone(dd);if(e.target.checked&&n1&&b1===n1&&b0<n0){det.classList.add("justdone");setTimeout(()=>{det.classList.remove("justdone");goNext(det)},650)}};
       part.appendChild(row);
       const ex=extrasHTML(x);if(ex){const d=document.createElement("div");d.className="extras";d.innerHTML=ex;part.appendChild(d)}
     });
     det.appendChild(part);
+    const ft=document.createElement("div");ft.className="dayfoot";
+    ft.innerHTML=`<button class="close">▲ Close ${dd.d}</button><button class="next">Next day ▶</button>`;
+    ft.querySelector(".close").onclick=()=>{det.open=false;det.scrollIntoView({block:"center"})};
+    ft.querySelector(".next").onclick=()=>goNext(det);
+    det.appendChild(ft);
   };
   det.addEventListener("toggle",()=>{if(det.open)det._build()});
   return det;
@@ -464,6 +477,12 @@ function renderDaily(){
       hits.appendChild(b);
     });
   },180)};
+}
+function goNext(det){
+  const all=[...document.querySelectorAll("#daily details.day")];const i=all.indexOf(det);
+  det.open=false;const nx=all[i+1];
+  if(!nx){det.scrollIntoView({block:"center"});return}
+  nx.open=true;requestAnimationFrame(()=>nx.scrollIntoView({behavior:"smooth",block:"start"}));
 }
 function findDay(d){for(const mo of G.schedule)for(const dd of mo.days)if(dd.d===d)return dd}
 
