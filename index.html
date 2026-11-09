@@ -338,6 +338,18 @@
   body[data-g="p3r"] h4.dxa,body[data-g="p3r"] #dex>h3{font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-style:italic;font-weight:800;font-size:24px;text-transform:uppercase;color:#fff}
   body[data-g="p3r"] .dxf button{background:transparent;color:#fff;border:0;border-bottom:2px solid #3fe0ff;transform:skew(-12deg);font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-style:italic;font-weight:800;font-size:16px}
   body[data-g="p3r"] .dxf button.on{background:#fff;color:#0a1fa8;box-shadow:-4px 0 0 #ff3b6b}
+  .dxdlc{background:var(--card);border:1px solid var(--line);padding:10px 12px;margin:8px 0 12px}
+  .dxdlc>span{font-weight:700;display:block;margin-bottom:8px}
+  .seg{display:flex;gap:6px}.seg button{flex:1;padding:9px;border:1px solid var(--line);background:#111;color:inherit;font-weight:800;cursor:pointer}
+  .seg button.on{background:var(--red);border-color:var(--red);color:#fff}
+  ul.dxmore li.xtra{display:none}ul.dxmore.open li.xtra{display:list-item}
+  .dxall{margin:4px 0 6px;padding:7px 12px;border:1px solid var(--line);background:#111;color:inherit;font-weight:700;cursor:pointer}
+  body[data-g="p5r"] .dxdlc{background:#000;border:0;box-shadow:4px 4px 0 #fff;color:#fff}
+  body[data-g="p5r"] .seg button{background:#111;border:2px solid #fff;transform:skew(-8deg);font-family:Anton,Impact,sans-serif;font-weight:400;letter-spacing:.6px;text-transform:uppercase}
+  body[data-g="p5r"] .seg button.on{background:#e60012;border-color:#fff}
+  body[data-g="p3r"] .dxdlc{background:rgba(2,8,44,.92);border:0;border-left:4px solid #3fe0ff}
+  body[data-g="p3r"] .seg button{background:transparent;border:2px solid #fff;transform:skew(-12deg);font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-style:italic;font-weight:800;font-size:16px}
+  body[data-g="p3r"] .seg button.on{background:#fff;color:#0a1fa8;box-shadow:-4px 0 0 #ff3b6b}
 
 /* ===== P5R menu theme (only when the P5 Royal game is active) ===== */
 body[data-g="p5r"]{
@@ -612,6 +624,10 @@ body[data-g="p5r"] #totop{background:#e60012;border-radius:0;clip-path:polygon(1
 body[data-g="p5r"] #totop.on{transform:rotate(-6deg)}
 body[data-g="p3r"] #totop{background:#fff;color:#0a1fa8;border:0;border-radius:0;transform:skew(-12deg) translateY(10px);box-shadow:-4px 0 0 #ff3b6b;font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-style:italic;font-weight:800}
 body[data-g="p3r"] #totop.on{transform:skew(-12deg)}
+
+/* header is fixed so shrinking it never moves the page (stops the up/down jitter loop) */
+header{position:fixed;top:0;left:0;right:0}
+body{padding-top:var(--hh,180px)}
 </style></head><body data-g="p5r">
 <header><div class="top"><h1 id="title">Persona</h1><button id="gear" aria-label="Settings">⚙</button></div>
 <div id="games"><button data-g="p5r">P5 Royal</button><button data-g="p3r">P3 Reload</button></div><div id="variant"></div>
@@ -684,9 +700,9 @@ function dexInit(){if(DX||!G.dex)return DX;const D=G.dex;const P=D.p;const by={}
   const sp2={};D.special.forEach(([r,s])=>{if(s.length===2){sp2[s[0]+"|"+s[1]]=r;sp2[s[1]+"|"+s[0]]=r}});
   const learn={};for(const n in P)for(const s in P[n].sk){(learn[s]=learn[s]||[]).push({n,at:Math.max(P[n].lv,P[n].sk[s])})}
   DX={P,S:D.s,by,sp2,learn};return DX}
-const have=n=>!!state["dex:"+n];
+const tracking=()=>!!state["dex:_track"];const have=n=>tracking()&&!!state["dex:"+n];
 const dlcOn=()=>!!state["dex:_dlc"];
-function pool(a){return(DX.by[a]||[]).filter(p=>!p.dlc||dlcOn()||have(p.n))}
+function pool(a){return(DX.by[a]||[]).filter(p=>!p.dlc||dlcOn())}
 function fuseNormal(p1,p2){
   if(DX.sp2[p1.n+"|"+p2.n])return null;
   const lv=1+Math.floor((p1.lv+p2.lv)/2);const a=G.dex.combos[p1.a+"|"+p2.a];if(!a)return null;const L=pool(a);
@@ -710,7 +726,7 @@ const GOODSK=/(Boost|Amp)$|^Concentrate$|^Charge$|^Spell Master$|^Arms Master$|^
 const ELCOL={phys:0,gun:1,fire:2,ice:3,electric:4,wind:5,psy:6,nuclear:7,bless:8,curse:9,healing:10,ailment:11};
 const ELSK5={fire:"Fire",ice:"Ice",electric:"Elec",wind:"Wind",psy:"Psy",nuclear:"Nuke",bless:"Bless",curse:"Curse"};
 function canInherit(p,s){const sk=DX.S[s];if(!sk||sk.u||sk.el==="trait")return false;if(isP3()){if(sk.ic<0||!p.inh)return sk.el!=="special";const t=G.dex.inh.types[p.inh];return !t||t[sk.ic]==="1"}const c=ELCOL[sk.el];if(c===undefined||!p.inh)return true;const row=G.dex.inhChart[p.inh];return !row||row[c]==="✓"}
-function bestSource(s,maxLv){const L=(DX.learn[s]||[]).filter(x=>{const q=DX.P[x.n];return !q.rare&&(!q.dlc||dlcOn()||have(q.n))}).sort((a,b)=>a.at-b.at);const f=L.find(x=>x.at<=maxLv)||null;return f}
+function bestSource(s,maxLv){const L=(DX.learn[s]||[]).filter(x=>{const q=DX.P[x.n];return !q.rare&&(!q.dlc||dlcOn())}).sort((a,b)=>a.at-b.at);const f=L.find(x=>x.at<=maxLv)||null;return f}
 function suggest(p){if(p.rare)return[];const own=new Set(Object.keys(p.sk));const out=[];const add=(s,why)=>{if(out.length>=5||own.has(s)||out.some(o=>o.s===s)||!DX.S[s]||!canInherit(p,s))return;const src=bestSource(s,p.lv+3);if(!src)return;out.push({s,why,src})};
   const wk=p.el.map((e,i)=>e==="wk"?i:-1).filter(i=>isP3()?i<9:i>=2);
   wk.forEach(i=>{const E=eln()[i];add("Null "+E,`covers its ${E} weakness`);add("Resist "+E,`softens its ${E} weakness`)});
@@ -747,10 +763,10 @@ function dexCard(p){dexInit();const S=DX.S;const tags=[];
   if(p.rare)make=`<p>Treasure Demons can't be fused. Find it in the wild${p.area?`: <b>${esc(p.area)}</b> ${esc(p.floor||"")}`:""}, then use it as a fusion ingredient to shift another persona up or down its arcana.</p>`;
   else{const R=recipesFor(p);if(!R.length)make=`<p>No fusion recipe found with your current settings.${p.dlc?" Turn on DLC personas below if you own them.":""}</p>`;
     else if(R[0].special){const r=R[0];make=`<p>Advanced fusion only. Put all of these together:</p><ul class="dxr">${dxRecHTML(r)}</ul>${p.max?`<p class="dxw">${esc(p.note||`You also need the ${p.a} confidant maxed.`)}</p>`:""}`}
-    else{const mine=R.filter(ownedRec).slice(0,5);const cheap=R.filter(r=>!mine.includes(r)).slice(0,5);const lv=myLv();
+    else{const tr=tracking();const mine=tr?R.filter(ownedRec).slice(0,5):[];const rest=R.filter(r=>!mine.includes(r));const lv=myLv();
       make=(p.max?`<p class="dxw">${esc(p.note||`Needs the ${p.a} confidant maxed before it can be fused.`)}</p>`:p.note&&isP3()?`<p class="dxw">${esc(p.note)}</p>`:"")+(lv&&p.lv>lv?`<p class="dxw">It's Lv ${p.lv} and you're Lv ${lv}, so you can't fuse it yet.</p>`:"")+
-        `<h5>From personas you've registered (${R.filter(ownedRec).length})</h5>`+(mine.length?`<ul class="dxr">${mine.map(dxRecHTML).join("")}</ul>`:`<p class="dxm">None yet. Register the ones you have and this fills in.</p>`)+
-        `<h5>${isP3()?"Easiest recipes (lowest-level ingredients)":"Cheapest recipes"}</h5><ul class="dxr">${cheap.map(dxRecHTML).join("")}</ul><p class="dxm">${R.length} recipes in all.${isP3()?"":" Costs are rough and go down as you level."}</p>`}}
+        (tr?`<h5>From personas you've registered (${R.filter(ownedRec).length})</h5>`+(mine.length?`<ul class="dxr">${mine.map(dxRecHTML).join("")}</ul>`:`<p class="dxm">None yet.</p>`):"")+
+        `<h5>${isP3()?"Easiest recipes (lowest-level ingredients)":"Cheapest recipes"}</h5><ul class="dxr dxmore">${rest.map((r,i)=>i>=6?dxRecHTML(r).replace("<li>",'<li class="xtra">'):dxRecHTML(r)).join("")}</ul>${rest.length>6?`<button class="dxall">Show all ${rest.length} recipes</button>`:""}<p class="dxm">${isP3()?"":"Costs are rough and go down as you level. "}${dlcOn()?"Worked out for a game with DLC personas.":"Worked out for a game without DLC personas."}</p>`}}
   const sug=suggest(p);const passOn=Object.keys(p.sk).filter(s=>GOODSK.test(s)&&canInheritAny(s));
   return `<div class="dxtags">${tags.map(t=>`<span>${esc(t)}</span>`).join("")}${p.inh&&!isP3()?`<span class="inh">Inherits ${esc(p.inh)}</span>`:""}</div>
   <div class="dxaff">${aff||`<span class="af">No weaknesses or resistances</span>`}</div>
@@ -763,22 +779,26 @@ function dexCard(p){dexInit();const S=DX.S;const tags=[];
   ${sug.length?`<h5>Good skills to give it</h5><ul class="dxsg">${sug.map(o=>`<li><b>${esc(o.s)}</b>: ${esc(o.why)}. Get it from ${pLink(DX.P[o.src.n],` (learns it by Lv ${o.src.at})`)}</li>`).join("")}</ul><p class="dxm">Suggestions only. A fusion can pass on skills from either ingredient, and higher-level results inherit more of them.</p>`:""}`}
 function canInheritAny(s){const sk=DX.S[s];return sk&&!sk.u&&sk.el!=="trait"}
 function dexRow(p){const d=document.createElement("details");d.className="dxp"+(have(p.n)?" got":"");d.dataset.p=p.n;
-  d.innerHTML=`<summary><label class="dxck" title="Registered"><input type="checkbox" ${have(p.n)?"checked":""}></label><span class="dxlv">${p.lv}</span><span class="dxn">${esc(p.n)}</span>${p.rare?`<em>TD</em>`:p.sp?`<em>SP</em>`:""}${p.dlc?`<em>DLC</em>`:""}</summary><div class="dxb"></div>`;
-  const cb=d.querySelector("input");cb.onclick=e=>e.stopPropagation();cb.onchange=()=>{if(cb.checked)state["dex:"+p.n]=1;else delete state["dex:"+p.n];save();d.classList.toggle("got",cb.checked);dexCount();if(d.open)d.querySelector(".dxb").innerHTML=dexCard(p)};
-  d.addEventListener("toggle",()=>{if(d.open)d.querySelector(".dxb").innerHTML=dexCard(p)});return d}
-function dexCount(){const el=document.getElementById("dxcount");if(!el)return;const all=Object.values(DX.P).filter(p=>!p.dlc||dlcOn());const n=all.filter(p=>have(p.n)).length;el.innerHTML=`<b>${n}</b> / ${all.length} registered<div class="bar"><div style="width:${n/all.length*100}%"></div></div>`}
+  d.innerHTML=`<summary>${tracking()?`<label class="dxck" title="Registered"><input type="checkbox" ${have(p.n)?"checked":""}></label>`:""}<span class="dxlv">${p.lv}</span><span class="dxn">${esc(p.n)}</span>${p.rare?`<em>TD</em>`:p.sp?`<em>SP</em>`:""}${p.dlc?`<em>DLC</em>`:""}</summary><div class="dxb"></div>`;
+  const cb=d.querySelector(".dxck input");if(cb){cb.onclick=e=>e.stopPropagation();cb.onchange=()=>{if(cb.checked)state["dex:"+p.n]=1;else delete state["dex:"+p.n];save();d.classList.toggle("got",cb.checked);dexCount();if(d.open)d.querySelector(".dxb").innerHTML=dexCard(p)}}
+  d.addEventListener("toggle",()=>{if(d.open)d.querySelector(".dxb").innerHTML=dexCard(p)});d.addEventListener("click",e=>{const b=e.target.closest(".dxall");if(b){b.previousElementSibling.classList.add("open");b.remove()}});return d}
+function dexCount(){const el=document.getElementById("dxcount");if(!el)return;if(!tracking()){el.innerHTML="";return}const all=Object.values(DX.P).filter(p=>!p.dlc||dlcOn());const n=all.filter(p=>have(p.n)).length;el.innerHTML=`<b>${n}</b> / ${all.length} registered<div class="bar"><div style="width:${n/all.length*100}%"></div></div>`}
 let DXF="all",DXQ="";
 function renderDex(){const root=document.getElementById("dex");if(!root||!dexInit())return;
-  root.innerHTML=`<h3>Persona Dex</h3><div id="dxcount"></div>
+  if(!tracking()&&DXF!=="all")DXF="all";
+  root.innerHTML=`<h3>Persona Dex</h3>
+  <div class="dxdlc"><span>Does your game have DLC personas?</span><div class="seg"><button data-d="0" class="${dlcOn()?"":"on"}">No DLC</button><button data-d="1" class="${dlcOn()?"on":""}">I have DLC</button></div>
+  <p class="dxm">This changes recipes. With DLC installed, some fusions turn into DLC personas instead (like Izanagi instead of Legion), so pick the one that matches your game.</p></div>
   <input class="search" id="dxq" type="search" placeholder="Try &quot;temperance 22&quot;, a name, or a skill" value="${esc(DXQ)}">
-  <div class="dxf">${[["all","All"],["miss","Missing"],["got","Registered"],["now","Can make now"]].map(([k,l])=>`<button data-f="${k}" class="${DXF===k?"on":""}">${l}</button>`).join("")}</div>
-  <div class="dxopt">${lvBox()}<label><input type="checkbox" id="dxdlc" ${dlcOn()?"checked":""}> I own the DLC personas</label></div>
-  <p class="note">Tick the box next to a persona once it's in your compendium. Tap a name for how to fuse it, its skills by level, and what to pass on.</p>
+  <div class="dxopt">${lvBox()}<label><input type="checkbox" id="dxtrack" ${tracking()?"checked":""}> Track my collection</label></div>
+  ${tracking()?`<div id="dxcount"></div><div class="dxf">${[["all","All"],["miss","Missing"],["got","Registered"],["now","Can make now"]].map(([k,l])=>`<button data-f="${k}" class="${DXF===k?"on":""}">${l}</button>`).join("")}</div>
+  <p class="note">Tick the box next to a persona once it's in your compendium. This is only for your own tracking and never changes the recipes.</p>`:`<p class="note">Tap any persona for how to fuse it, the skills it learns as it levels, and what to pass on. Turn on "Track my collection" if you want to tick off personas as you get them.</p>`}
   <div id="dxlist"></div><p class="dxm" style="margin-top:18px">Persona, skill and fusion data from ${isP3()?"megaten-fusion-tool by aqiu384 (public domain)":"persona5_calculator by chinhodado (Apache-2.0)"}.</p>`;
   dexCount();
   const q=root.querySelector("#dxq");q.oninput=()=>{DXQ=q.value;clearTimeout(q._t);q._t=setTimeout(dexList,180)};
   root.querySelectorAll(".dxf button").forEach(b=>b.onclick=()=>{DXF=b.dataset.f;root.querySelectorAll(".dxf button").forEach(x=>x.classList.toggle("on",x===b));dexList()});
-  root.querySelector("#dxdlc").onchange=e=>{if(e.target.checked)state["dex:_dlc"]=1;else delete state["dex:_dlc"];save();dexCount();dexList()};
+  root.querySelectorAll(".dxdlc .seg button").forEach(b=>b.onclick=()=>{if(b.dataset.d==="1")state["dex:_dlc"]=1;else delete state["dex:_dlc"];save();root.querySelectorAll(".dxdlc .seg button").forEach(x=>x.classList.toggle("on",x===b));dexCount();dexList()});
+  root.querySelector("#dxtrack").onchange=e=>{if(e.target.checked)state["dex:_track"]=1;else delete state["dex:_track"];save();renderDex()};
   wireLv(root,()=>{if(DXF==="now")dexList()});
   dexList()}
 function dexList(){const box=document.getElementById("dxlist");if(!box)return;box.innerHTML="";
@@ -790,7 +810,7 @@ function dexList(){const box=document.getElementById("dxlist");if(!box)return;bo
     const m=document.createElement("p");m.className="dxmsg";m.textContent=L.length?`${L.length} missing personas you can fuse from what you've registered${lv?` at Lv ${lv}`:""}:`:"Nothing yet. Register more personas, or set your level.";box.appendChild(m);
     L.forEach(p=>box.appendChild(dexRow(p)));return}
   if(res){L.forEach(p=>box.appendChild(dexRow(p)));if(L.length===1){box.querySelector("details.dxp").open=true}return}
-  ARC_ORDER.forEach(a=>{const g=L.filter(p=>p.a===a).sort((x,y)=>x.lv-y.lv);if(!g.length)return;const h=document.createElement("h4");h.className="dxa";h.innerHTML=`${esc(a)} <small>${g.filter(p=>have(p.n)).length}/${g.length}</small>`;box.appendChild(h);g.forEach(p=>box.appendChild(dexRow(p)))})}
+  ARC_ORDER.forEach(a=>{const g=L.filter(p=>p.a===a).sort((x,y)=>x.lv-y.lv);if(!g.length)return;const h=document.createElement("h4");h.className="dxa";h.innerHTML=`${esc(a)}${tracking()?` <small>${g.filter(p=>have(p.n)).length}/${g.length}</small>`:""}`;box.appendChild(h);g.forEach(p=>box.appendChild(dexRow(p)))})}
 document.addEventListener("click",e=>{const a=e.target.closest&&e.target.closest("a.dxl");if(!a)return;e.preventDefault();const n=a.dataset.p;
   let d=[...document.querySelectorAll("#dxlist details.dxp")].find(x=>x.dataset.p===n);
   if(!d){DXQ=n;DXF="all";const q=document.getElementById("dxq");if(q)q.value=n;document.querySelectorAll(".dxf button").forEach(x=>x.classList.toggle("on",x.dataset.f==="all"));dexList();d=[...document.querySelectorAll("#dxlist details.dxp")].find(x=>x.dataset.p===n)}
@@ -1290,9 +1310,11 @@ function refresh(){renderOverview();updatePct()}
 function show(){const v=view();document.getElementById("t-dex").style.display=G.dex?"":"none";["daily","overview","guide","fusion","dex"].forEach(x=>{document.getElementById("v-"+x).classList.toggle("on",x===v);document.getElementById("t-"+x).classList.toggle("on",x===v)});if(v==="overview")renderOverview();if(v==="fusion")renderFusion();if(v==="dex")renderDex();updatePct()}
 window.addEventListener("hashchange",show);
 (function(){let last=0,tick=false;const hd=document.querySelector("header");
+  const fit=()=>{if(!hd.classList.contains("mini"))document.body.style.setProperty("--hh",hd.offsetHeight+"px")};
+  fit();addEventListener("resize",fit);hd.addEventListener("transitionend",fit);if(document.fonts)document.fonts.ready.then(fit);setTimeout(fit,300);window._fitHdr=fit;
   addEventListener("scroll",()=>{if(tick)return;tick=true;requestAnimationFrame(()=>{const y=scrollY;
     if(Date.now()<HOLD){last=y;tick=false;return}
-    if(y<60)hd.classList.remove("mini");else if(y>last+6)hd.classList.add("mini");else if(y<last-30)hd.classList.remove("mini");
+    if(y<60)hd.classList.remove("mini");else if(y>last+12)hd.classList.add("mini");else if(y<last-40)hd.classList.remove("mini");else{tick=false;return}
     last=y;tick=false})},{passive:true});
   const top=document.createElement("button");top.id="totop";top.setAttribute("aria-label","Back to top");top.innerHTML="▲<small>TOP</small>";document.body.appendChild(top);
   top.onclick=()=>{hd.classList.remove("mini");HOLD=Date.now()+900;window.scrollTo({top:0,behavior:RM.matches?"auto":"smooth"})};
@@ -1302,7 +1324,7 @@ window.addEventListener("hashchange",show);
 
 function loadGame(id){
   if(!GAMES[id]){const f=Object.values(GAMES).find(g=>g.fam===id);id=f?f.id:"p5r"}
-  GID=id;G=GAMES[GID];DX=null;LS.set("persona:game",GID);
+  GID=id;G=GAMES[GID];DX=null;setTimeout(()=>window._fitHdr&&window._fitHdr(),50);LS.set("persona:game",GID);
   try{state=JSON.parse(LS.get(G.key,"{}"))||{}}catch(e){state={}}
   state=migrate(state);save();
   document.body.dataset.g=G.fam||GID;
