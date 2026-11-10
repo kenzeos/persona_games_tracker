@@ -362,6 +362,8 @@
   body[data-g="p5r"] .dxskill h4{font-family:Anton,Impact,sans-serif;font-weight:400;text-transform:uppercase;letter-spacing:.5px}
   body[data-g="p5r"] .dxskill .dxc,body[data-g="p5r"] .dxskill small,body[data-g="p5r"] .dxskill h5,body[data-g="p5r"] .dxskill .dxm{color:#555}
   body[data-g="p3r"] .dxskill{background:rgba(2,8,44,.92);border:0;border-left:4px solid #3fe0ff}
+  .remform select.veg{max-width:100%;flex:1}.remform label.remrow{font-size:13px;gap:8px;display:flex;align-items:center}
+  .remform .when{font-weight:700;flex:1}
 
 /* ===== P5R menu theme (only when the P5 Royal game is active) ===== */
 body[data-g="p5r"]{
@@ -1117,10 +1119,21 @@ function remForm(fromD,text,kind,after){
   f.querySelector(".no").onclick=e=>{e.preventDefault();f.remove()};
   return f;
 }
+const VEG=[["Moonlight Carrot",4,"fully restores one ally's SP"],["Sun Tomato",6,"fully restores the party's SP"],["Earth Beans",3,"Charge effect (next physical hit x2.5)"],["Star Dragon Onion",3,"Concentrate effect (next spell x2.5)"]];
+function addDaysMD(md,n){const m=+md.slice(0,2),d=+md.slice(3,5);const y=m>=4?2016:2017;const t=new Date(y,m-1,d+n);return String(t.getMonth()+1).padStart(2,"0")+"/"+String(t.getDate()).padStart(2,"0")}
+function gardenForm(fromD,after){const f=document.createElement("div");f.className="remform";
+  f.innerHTML=`<div class="remrow"><span>Planted:</span><select class="veg">${VEG.map((v,i)=>`<option value="${i}">${v[0]} (${v[1]} days): ${v[2]}</option>`).join("")}</select></div>
+  <label class="remrow"><input type="checkbox" class="soil" ${state._soil?"checked":""}> Soil Improvement (Empress Rank 7+, one day faster)</label>
+  <div class="remrow"><span class="when"></span><button class="ok">Set</button><button class="no">Cancel</button></div>`;
+  const calc=()=>{const v=VEG[+f.querySelector(".veg").value];const n=v[1]-(f.querySelector(".soil").checked?1:0);const tgt=addDaysMD(fromD.slice(0,5),n);const day=allDays().find(x=>ord(x.d)>=ord(tgt));return{v,n,day}};
+  const upd=()=>{const c=calc();f.querySelector(".when").textContent=c.day?`Ready on ${c.day.d.slice(0,5)} (${c.n} days)`:"Ready after the schedule ends"};
+  f.querySelector(".veg").onchange=upd;f.querySelector(".soil").onchange=e=>{state._soil=e.target.checked?1:0;save();upd()};upd();
+  f.querySelector(".ok").onclick=e=>{e.preventDefault();const c=calc();if(!c.day){f.remove();return}addRem({d:c.day.d.slice(0,5),t:`🌱 Harvest your ${c.v[0]} on the school rooftop`,k:"gar",done:0});const msg=document.createElement("div");msg.className="remok";msg.textContent="🌱 Harvest reminder set for "+c.day.d.slice(0,5);f.replaceWith(msg);after&&after()};
+  f.querySelector(".no").onclick=e=>{e.preventDefault();f.remove()};return f}
 function remRows(dd,part,setSum){
   remsFor(dd).forEach(r=>{
     const row=document.createElement("label");row.className="row rem"+(r.done?" done":"");
-    row.innerHTML=`<input type="checkbox" ${r.done?"checked":""}><span class="lbl">${r.k==="lot"?"":"🔔 "}${esc(r.t)}${r.from?`<small class="moved"> (moved from ${esc(r.from)})</small>`:""}${r.done?"":`<button class="snz" title="Move to the next day">⏭ Next day</button>`}<button class="rx" title="Delete reminder">✕</button></span>`;
+    row.innerHTML=`<input type="checkbox" ${r.done?"checked":""}><span class="lbl">${r.k==="lot"||r.k==="gar"?"":"🔔 "}${esc(r.t)}${r.from?`<small class="moved"> (moved from ${esc(r.from)})</small>`:""}${r.done?"":`<button class="snz" title="Move to the next day">⏭ Next day</button>`}<button class="rx" title="Delete reminder">✕</button></span>`;
     {const sz=row.querySelector(".snz");if(sz)sz.onclick=e=>{e.preventDefault();e.stopPropagation();
       const nd=allDays().find(x=>ord(x.d)>ord(r.d));if(!nd){sz.textContent="No later day";return}
       const old=r.d;r.from=r.from||old;r.d=nd.d.slice(0,5);save();refreshDay(old);refreshDay(r.d);updatePct();calcPos();
@@ -1131,6 +1144,11 @@ function remRows(dd,part,setSum){
       if(r.done&&r.k==="lot"&&!r.next){const box=document.createElement("div");box.className="remnext";
         box.innerHTML=`<p>Didn't win, or want another try? Buy a new ticket and set its results day.</p><button class="buy">🎟 Bought another ticket</button><button class="won">🏆 Got the trophy, stop</button>`;
         box.querySelector(".buy").onclick=()=>{box.replaceWith(remForm(r.d.slice(0,5),"","lot",()=>{r.next=1;save()}))};
+        box.querySelector(".won").onclick=()=>{r.next=1;save();box.remove()};
+        row.after(box)}
+      if(r.done&&r.k==="gar"&&!r.next){const box=document.createElement("div");box.className="remnext";
+        box.innerHTML=`<p>Planting something new? Pick it and the app will remind you when it's ready.</p><button class="buy">🌱 Planted again</button><button class="won">Done gardening</button>`;
+        box.querySelector(".buy").onclick=()=>{box.replaceWith(gardenForm(r.d.slice(0,5),()=>{r.next=1;save()}))};
         box.querySelector(".won").onclick=()=>{r.next=1;save();box.remove()};
         row.after(box)}};
     part.appendChild(row);
@@ -1174,6 +1192,11 @@ function buildDay(dd){
       part.appendChild(row);
       if(x.sheet&&G.sheets&&G.sheets[x.sheet])part.appendChild(sheetEl(G.sheets[x.sheet]));
       const ex=extrasHTML(x);if(ex){const d=document.createElement("div");d.className="extras";d.innerHTML=ex;part.appendChild(d)}
+      if(x.t&&/choose one vegetable to plant|plant (a |some )?vegetables?/i.test(x.t)){const w=document.createElement("div");w.className="extras";
+        const nxt=(state.rem||[]).filter(r=>r.k==="gar"&&!r.done).map(r=>r.d).sort((p,q)=>ord(p)-ord(q))[0];
+        w.innerHTML=`<button class="lotbtn">🌱 Planted something? Set a harvest reminder</button>${nxt?`<span class="remok">Next harvest: ${nxt}</span>`:""}`;
+        w.querySelector(".lotbtn").onclick=()=>{if(!w.querySelector(".remform"))w.appendChild(gardenForm(dd.d.slice(0,5)))};
+        part.appendChild(w)}
       if(/lottery/i.test((x.t||"")+(x.s||[]).join(" "))){const w=document.createElement("div");w.className="extras";
         const nxt=(state.rem||[]).filter(r=>r.k==="lot"&&!r.done).map(r=>r.d).sort((p,q)=>ord(p)-ord(q))[0];
         w.innerHTML=`<button class="lotbtn">🎟 Bought a ticket? Set a reminder</button>${nxt?`<span class="remok">Next check: ${nxt}</span>`:""}`;
